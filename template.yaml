@@ -4,6 +4,14 @@ Description: >-
 
 
 
+
+
+Parameters:
+  OpenSearchCrossAccountRole:
+    Description: Cross account role ARN assumed within the Custom Lambda to access stacks in different accounts
+    Type: String
+    Default: arn:aws:iam::038416732207:role/FOS-SA-Backend-OpenSearchCrossAccountRole-18V3IG1XTZPL1
+
 Globals:
   Function:
     Runtime: nodejs16.x  
@@ -13,14 +21,6 @@ Globals:
       Variables:
         TEST_TABLE: VendorTable
 
-  Api:
-    TracingEnabled: true
-Parameters:
-  OpenSearchCrossAccountRole:
-    Description: Cross account role ARN assumed within the Custom Lambda to access stacks in different accounts
-    Type: String
-    Default: arn:aws:iam::038416732207:role/FOS-SA-Backend-OpenSearchCrossAccountRole-18V3IG1XTZPL1
-    
 Resources:
 
   OpenTestAPI:
