@@ -6,8 +6,9 @@ Description: >-
 
 Globals:
   Function:
+    Runtime: nodejs16.x  
     CodeUri: ./src/handlers
-    Tracing: Active
+    Timeout: 30
     Environment:
       Variables:
         TEST_TABLE: VendorTable
@@ -91,5 +92,29 @@ Resources:
             RestApiId: !Ref OpenTestAPI
             Method: any  
 
+createFruits:
+  Type: AWS::Serverless::Function
+  Properties:
+    Handler: CreateFruit.handler
+
+    Role: !GetAtt OpenSearchCrossAccountAccessRole.Arn
+    Environment:
+      Variables:
+        ROLE_ARN: !Ref OpenSearchCrossAccountRole
+    Policies:
+      - Statement:
+          - Effect: "Allow"
+            Action:
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:UpdateItem"
+            Resource: !Ref OpenSearchCrossAccountRole
+    Events:
+      AddPage:
+        Type: Api
+        Properties:
+          Path: /fruit
+          RestApiId: !Ref OpenTestAPI
+          Method: any
 
 

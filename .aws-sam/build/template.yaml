@@ -1,0 +1,119 @@
+Description: Test-Project
+Globals:
+  Function:
+    Runtime: nodejs16.x
+    CodeUri: ./src/handlers
+    Timeout: 30
+    Environment:
+      Variables:
+        TEST_TABLE: VendorTable
+  Api:
+    TracingEnabled: true
+Parameters:
+  OpenSearchCrossAccountRole:
+    Description: Cross account role ARN assumed within the Custom Lambda to access
+      stacks in different accounts
+    Type: String
+    Default: arn:aws:iam::038416732207:role/FOS-SA-Backend-OpenSearchCrossAccountRole-18V3IG1XTZPL1
+Resources:
+  OpenTestAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: '''*'''
+        AllowOrigin: '''*'''
+        AllowHeaders: '''Authorization, Content-Type'''
+  OpensearchGetPolicyTest:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: Cross-account-opensearch-get-policy-test
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          Resource: arn:aws:logs:*:*:*
+        - Effect: Allow
+          Action:
+          - sts:AssumeRole
+          Resource:
+            Ref: OpenSearchCrossAccountRole
+      Roles:
+      - Ref: OpenSearchCrossAccountAccessRole
+  OpenSearchCrossAccountAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaDynamoDBExecutionRole
+      Path: /
+  createFruits:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: CreateFruit.handler
+      Role:
+        Fn::GetAtt:
+        - OpenSearchCrossAccountAccessRole
+        - Arn
+      Environment:
+        Variables:
+          ROLE_ARN:
+            Ref: OpenSearchCrossAccountRole
+      Policies:
+      - Statement:
+        - Effect: Allow
+          Action:
+          - dynamodb:ConditionCheckItem
+          - dynamodb:PutItem
+          - dynamodb:UpdateItem
+          Resource:
+            Ref: OpenSearchCrossAccountRole
+      Events:
+        AddPage:
+          Type: Api
+          Properties:
+            Path: /fruit
+            RestApiId:
+              Ref: OpenTestAPI
+            Method: any
+      CodeUri: createFruits
+    Metadata:
+      SamResourceId: createFruits
+createFruits:
+  Type: AWS::Serverless::Function
+  Properties:
+    Handler: CreateFruit.handler
+    Role:
+      Fn::GetAtt:
+      - OpenSearchCrossAccountAccessRole
+      - Arn
+    Environment:
+      Variables:
+        ROLE_ARN:
+          Ref: OpenSearchCrossAccountRole
+    Policies:
+    - Statement:
+      - Effect: Allow
+        Action:
+        - dynamodb:ConditionCheckItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        Resource:
+          Ref: OpenSearchCrossAccountRole
+    Events:
+      AddPage:
+        Type: Api
+        Properties:
+          Path: /fruit
+          RestApiId:
+            Ref: OpenTestAPI
+          Method: any
