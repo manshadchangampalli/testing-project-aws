@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Test-Project
+
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Tracing: Active
+  Api:
+    TracingEnabled: true
+Parameters:
+  OpenSearchCrossAccountRole:
+    Description: Cross account role ARN assumed within the Custom Lambda to access stacks in different accounts
+    Type: String
+    Default: arn:aws:iam::038416732207:role/FOS-SA-Backend-OpenSearchCrossAccountRole-18V3IG1XTZPL1
+    
+Resources:
+  OpensearchGetPolicyTest:
+    Type: AWS::IAM::Policy
+    Properties:
+      # Role: !Ref SuperAdminRole
+      PolicyName: Cross-account-opensearch-get-policy-test
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Resource: !Ref OpenSearchCrossAccountRole
+      Roles:
+        - !Ref OpenSearchCrossAccountAccessRole
+
+  OpenSearchCrossAccountAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaDynamoDBExecutionRole"
+      Path: /
+
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for Prod stage
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
