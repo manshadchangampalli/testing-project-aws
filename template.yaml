@@ -1,13 +1,17 @@
-AWSTemplateFormatVersion: 2010-09-09
+
 Description: >-
   Test-Project
 
-Transform:
-  - AWS::Serverless-2016-10-31
+
 
 Globals:
   Function:
+    CodeUri: ./src/handlers
     Tracing: Active
+    Environment:
+      Variables:
+        TEST_TABLE: VendorTable
+
   Api:
     TracingEnabled: true
 Parameters:
@@ -17,6 +21,16 @@ Parameters:
     Default: arn:aws:iam::038416732207:role/FOS-SA-Backend-OpenSearchCrossAccountRole-18V3IG1XTZPL1
     
 Resources:
+
+  OpenTestAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'*'"
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Authorization, Content-Type'"
+        
   OpensearchGetPolicyTest:
     Type: AWS::IAM::Policy
     Properties:
@@ -51,7 +65,31 @@ Resources:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaDynamoDBExecutionRole"
       Path: /
 
-Outputs:
-  WebEndpoint:
-    Description: API Gateway endpoint URL for Prod stage
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
+
+  createFruits:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: CreateFruit.handler
+      Role: !GetAtt OpenSearchCrossAccountAccessRole.Arn
+      Environment:
+        Variables:
+          ROLE_ARN: !Ref OpenSearchCrossAccountRole      
+      Policies:
+      - Statement:
+        - Effect: "Allow"
+          Action:
+          - "dynamodb:ConditionCheckItem"
+          - "dynamodb:PutItem"
+          - "dynamodb:UpdateItem"
+          Resource: !Ref OpenSearchCrossAccountRole
+      Events:
+        AddPage:
+          Type: Api
+          Properties:
+            Path: /fruit
+            RestApiId: !Ref OpenTestAPI
+            Method: any  
+
+
+
