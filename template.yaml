@@ -2,27 +2,22 @@
 Description: >-
   Test-Project
 
-
-
-
-
 Parameters:
-  OpenSearchCrossAccountRole:
-    Description: Cross account role ARN assumed within the Custom Lambda to access stacks in different accounts
+  ClientAccount:
+    Description: Client's Account.
     Type: String
-    Default: arn:aws:iam::038416732207:role/FOS-SA-Backend-OpenSearchCrossAccountRole-18V3IG1XTZPL1
+    Default: '038416732207'
 
 Globals:
   Function:
-    Runtime: nodejs16.x  
+    Runtime: nodejs16.x
     CodeUri: ./src/handlers
-    Timeout: 30
     Environment:
       Variables:
-        TEST_TABLE: VendorTable
+        MAIN_TABLE_NAME: 'ItemTable'
+
 
 Resources:
-
   OpenTestAPI:
     Type: AWS::Serverless::Api
     Properties:
@@ -31,51 +26,37 @@ Resources:
         AllowMethods: "'*'"
         AllowOrigin: "'*'"
         AllowHeaders: "'Authorization, Content-Type'"
-        
-  OpensearchGetPolicyTest:
-    Type: AWS::IAM::Policy
-    Properties:
-      # Role: !Ref SuperAdminRole
-      PolicyName: Cross-account-opensearch-get-policy-test
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Resource: arn:aws:logs:*:*:*
-          - Effect: Allow
-            Action:
-              - sts:AssumeRole
-            Resource: !Ref OpenSearchCrossAccountRole
-      Roles:
-        - !Ref OpenSearchCrossAccountAccessRole
-
-  OpenSearchCrossAccountAccessRole:
-    Type: AWS::IAM::Role
+  
+  CrossAccountRole:
+    Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
+        Version: "2012-10-17"
         Statement:
-          - Effect: Allow
+          - Effect: "Allow"
             Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AWSLambdaDynamoDBExecutionRole"
-      Path: /
-
-
+              AWS:
+                - !Sub "arn:aws:iam::${ClientAccount}:root"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "AccessItemTable"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:GetItem"
+                  - "dynamodb:PutItem"
+                Resource: "arn:aws:dynamodb:ap-south-1:${ClientAccount}:table/ItemTable"
 
   createFruits:
     Type: AWS::Serverless::Function
     Properties:
       Handler: CreateFruit.handler
-      Role: !GetAtt OpenSearchCrossAccountAccessRole.Arn
+      Role: !GetAtt CrossAccountRole.Arn
       Environment:
         Variables:
-          ROLE_ARN: !Ref OpenSearchCrossAccountRole      
+          ROLE_ARN: !Ref CrossAccountRole      
       Policies:
       - Statement:
         - Effect: "Allow"
@@ -83,7 +64,7 @@ Resources:
           - "dynamodb:ConditionCheckItem"
           - "dynamodb:PutItem"
           - "dynamodb:UpdateItem"
-          Resource: !Ref OpenSearchCrossAccountRole
+          Resource: "arn:aws:dynamodb:ap-south-1:${ClientAccount}:table/ItemTable"
       Events:
         AddPage:
           Type: Api
@@ -92,29 +73,7 @@ Resources:
             RestApiId: !Ref OpenTestAPI
             Method: any  
 
-createFruits:
-  Type: AWS::Serverless::Function
-  Properties:
-    Handler: CreateFruit.handler
 
-    Role: !GetAtt OpenSearchCrossAccountAccessRole.Arn
-    Environment:
-      Variables:
-        ROLE_ARN: !Ref OpenSearchCrossAccountRole
-    Policies:
-      - Statement:
-          - Effect: "Allow"
-            Action:
-              - "dynamodb:ConditionCheckItem"
-              - "dynamodb:PutItem"
-              - "dynamodb:UpdateItem"
-            Resource: !Ref OpenSearchCrossAccountRole
-    Events:
-      AddPage:
-        Type: Api
-        Properties:
-          Path: /fruit
-          RestApiId: !Ref OpenTestAPI
-          Method: any
+
 
 

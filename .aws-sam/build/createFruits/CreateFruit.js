@@ -1,51 +1,45 @@
-// Create clients and set shared const values outside of the handler.
+const AWS = require("aws-sdk");
 
-// Create a DocumentClient that represents the query to add an item
-const dynamodb = require('aws-sdk/clients/dynamodb');
-const docClient = new dynamodb.DocumentClient();
+async function accessItemTable() {
+  // Assume IAM role in project A
+  const sts = new AWS.STS();
+  const assumeRoleParams = {
+    RoleArn: `arn:aws:iam::038416732207:role/CrossAccountRole`,
+    RoleSessionName: "AssumeRoleSession",
+  };
 
-// Get the DynamoDB table name from environment variables
-const tableName = process.env.TEST_TABLE;
+  const assumedRole = await sts.assumeRole(assumeRoleParams).promise();
 
-/**
- * A simple example includes a HTTP post method to add one item to a DynamoDB table.
- */
-exports.handler = async (event) => {
-    if (event.httpMethod !== 'POST') {
-        throw new Error(`postMethod only accepts POST method, you tried: ${event.httpMethod} method.`);
-    }
-    // All log statements are written to CloudWatch
-    console.info('received:', event);
+  // Use the temporary credentials
+  const dynamoDB = new AWS.DynamoDB({
+    accessKeyId: assumedRole.Credentials.AccessKeyId,
+    secretAccessKey: assumedRole.Credentials.SecretAccessKey,
+    sessionToken: assumedRole.Credentials.SessionToken,
+  });
 
-    // Get id and name from the body of the request
-    const body = JSON.parse(event.body);
-    const id = body.id;
-    const name = body.name;
+  // Use DynamoDB to interact with the ITEMTABLE
+  // Example: Get an item from the table
+  const getItemParams = {
+    TableName: "ItemTable",
+    Key: {
+      PK: { S: `Cashier#1okaNrKXECAc7RxgyxliVvAXGtl` },
+      SK: { S: "Cashier#2Nlw6o2euJObUbj9H6Yj0kb1qqi" },
+    },
+  };
 
-    // Creates a new item, or replaces an old item with a new item
-    // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html#put-property
-    let response = {};
+  const item = await dynamoDB.getItem(getItemParams).promise();
 
-    try {
-        const params = {
-            TableName : tableName,
-            Item: { id : id, name: name }
-        };
-    
-        const result = await docClient.put(params).promise();
-    
-        response = {
-            statusCode: 200,
-            body: JSON.stringify(body)
-        };
-    } catch (ResourceNotFoundException) {
-        response = {
-            statusCode: 404,
-            body: "Unable to call DynamoDB. Table resource not found."
-        };
-    }
+  // Process the retrieved item
+  // ...
 
-    // All log statements are written to CloudWatch
-    console.info(`response from: ${event.path} statusCode: ${response.statusCode} body: ${response.body}`);
-    return response;
-};
+  return item;
+}
+
+// Invoke the function
+accessItemTable()
+  .then((result) => {
+    console.log("Item retrieved:", result);
+  })
+  .catch((error) => {
+    console.error("Error:", error);
+  });
