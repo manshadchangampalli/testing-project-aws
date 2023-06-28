@@ -1,3 +1,5 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
 Description: Test-Project
 Parameters:
   ClientAccount:
@@ -40,7 +42,8 @@ Resources:
             Action:
             - dynamodb:GetItem
             - dynamodb:PutItem
-            Resource: arn:aws:dynamodb:ap-south-1:${ClientAccount}:table/ItemTable
+            Resource:
+            - Fn::Sub: arn:aws:dynamodb:ap-south-1:${ClientAccount}:table/ItemTable
   createFruits:
     Type: AWS::Serverless::Function
     Properties:
@@ -52,7 +55,9 @@ Resources:
       Environment:
         Variables:
           ROLE_ARN:
-            Ref: CrossAccountRole
+            Fn::GetAtt:
+            - CrossAccountRole
+            - Arn
       Policies:
       - Statement:
         - Effect: Allow

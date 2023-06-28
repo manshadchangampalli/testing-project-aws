@@ -1,4 +1,5 @@
-
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
 Description: >-
   Test-Project
 
@@ -47,7 +48,9 @@ Resources:
                 Action:
                   - "dynamodb:GetItem"
                   - "dynamodb:PutItem"
-                Resource: "arn:aws:dynamodb:ap-south-1:${ClientAccount}:table/ItemTable"
+                Resource:
+                  - !Sub "arn:aws:dynamodb:ap-south-1:${ClientAccount}:table/ItemTable"
+
 
   createFruits:
     Type: AWS::Serverless::Function
@@ -56,22 +59,22 @@ Resources:
       Role: !GetAtt CrossAccountRole.Arn
       Environment:
         Variables:
-          ROLE_ARN: !Ref CrossAccountRole      
+          ROLE_ARN: !GetAtt CrossAccountRole.Arn
       Policies:
-      - Statement:
-        - Effect: "Allow"
-          Action:
-          - "dynamodb:ConditionCheckItem"
-          - "dynamodb:PutItem"
-          - "dynamodb:UpdateItem"
-          Resource: "arn:aws:dynamodb:ap-south-1:${ClientAccount}:table/ItemTable"
+        - Statement:
+            - Effect: "Allow"
+              Action:
+                - "dynamodb:ConditionCheckItem"
+                - "dynamodb:PutItem"
+                - "dynamodb:UpdateItem"
+              Resource: "arn:aws:dynamodb:ap-south-1:${ClientAccount}:table/ItemTable"
       Events:
         AddPage:
           Type: Api
           Properties:
             Path: /fruit
             RestApiId: !Ref OpenTestAPI
-            Method: any  
+            Method: any
 
 
 
